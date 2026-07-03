@@ -19,7 +19,7 @@ on:
           - integration
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   PYTHON_VERSION: '3.12'
   BACKEND_DIR: 'Backend'
   FRONTEND_DIR: 'admin_react_app'

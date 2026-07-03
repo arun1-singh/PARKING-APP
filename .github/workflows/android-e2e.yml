@@ -99,7 +99,7 @@ jobs:
         run: |
           echo "Verifying database tables and data..."
           docker compose exec -T db psql -U parking_user -d parking_db -c "
-            SELECT 
+            SELECT
               (SELECT COUNT(*) FROM users) as users,
               (SELECT COUNT(*) FROM parkinglots_details) as parking_lots,
               (SELECT COUNT(*) FROM user_vehicles) as vehicles,
@@ -117,8 +117,10 @@ jobs:
         run: ./gradlew assembleDebug
         working-directory: ./Vision-Parking
 
-      - name: Make run_e2e.sh executable
-        run: chmod +x Vision-Parking/run_e2e.sh
+      - name: Make scripts executable
+        run: |
+          chmod +x Vision-Parking/run_e2e.sh
+          chmod +x Vision-Parking/ci_emulator_setup.sh
 
       - name: Run E2E tests on emulator
         uses: ReactiveCircus/android-emulator-runner@v2
@@ -133,84 +135,7 @@ jobs:
           heap-size: 1024M
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -memory 4096 -wipe-data -partition-size 8192 -gpu swiftshader_indirect -camera-back none -camera-front none
           disable-animations: true
-          script: |
-            echo "=== Step 1: Wait for device ==="
-            adb wait-for-device
-
-            echo "=== Step 2: Wait for boot ==="
-            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-            echo "✅ Boot completed"
-
-            echo "=== Step 3: Wait for package manager to be truly stable ==="
-            PM_READY=0
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
-              if adb shell pm list packages > /dev/null 2>&1; then
-                echo "Package manager stable"
-                PM_READY=1
-                break
-              fi
-              echo "Waiting for package manager... attempt $i"
-              sleep 3
-            done
-
-            echo "=== Step 4: Extra stabilization wait (20s) ==="
-            sleep 20
-
-            echo "=== Step 5: Dismiss system dialogs ==="
-            adb shell input keyevent KEYCODE_BACK  2>/dev/null || true
-            sleep 1
-            adb shell input keyevent KEYCODE_ENTER 2>/dev/null || true
-            sleep 1
-
-            echo "=== Step 6: Install APK with retry ==="
-            INSTALL_SUCCESS=0
-            for attempt in 1 2 3 4 5; do
-              echo "Install attempt $attempt/5..."
-              if ! adb shell pm list packages > /dev/null 2>&1; then
-                echo "Package manager not ready, waiting 30s..."
-                sleep 30
-                continue
-              fi
-              if adb install -r Vision-Parking/app/build/outputs/apk/debug/app-debug.apk 2>&1; then
-                INSTALL_SUCCESS=1
-                echo "APK installed on attempt $attempt"
-                break
-              else
-                echo "Install failed on attempt $attempt, waiting 30s..."
-                sleep 30
-              fi
-            done
-            if [ $INSTALL_SUCCESS -ne 1 ]; then
-              echo "APK install failed after 5 attempts"
-              adb devices
-              exit 1
-            fi
-
-            echo "=== Step 7: Verify installation ==="
-            adb shell pm list packages | grep $APP_PACKAGE || { echo "❌ App not found after install"; exit 1; }
-
-            echo "=== Step 8: Grant permissions ==="
-            adb shell pm grant $APP_PACKAGE android.permission.CAMERA || true
-            adb shell pm grant $APP_PACKAGE android.permission.ACCESS_FINE_LOCATION || true
-            adb shell pm grant $APP_PACKAGE android.permission.ACCESS_COARSE_LOCATION || true
-            adb shell pm grant $APP_PACKAGE android.permission.WRITE_EXTERNAL_STORAGE || true
-            adb shell pm grant $APP_PACKAGE android.permission.READ_EXTERNAL_STORAGE || true
-
-            echo "=== Step 9: Clear app data ==="
-            adb shell pm clear $APP_PACKAGE || echo "Could not clear app data"
-
-            echo "=== Step 10: Launch and verify app ==="
-            adb shell am start -n $APP_PACKAGE/com.example.visionpark.activities.SplashScreenActivity
-            sleep 8
-            adb shell "ps -A 2>/dev/null | grep $APP_PACKAGE" || adb shell "ps 2>/dev/null | grep $APP_PACKAGE" || echo "App process not found (may be normal)"
-            adb shell dumpsys activity activities | grep "mResumedActivity" || echo "Could not get current activity"
-
-            echo "=== Step 11: Stop app before tests ==="
-            adb shell am force-stop $APP_PACKAGE
-            sleep 2
-
-            echo "=== Step 12: Run E2E tests ==="
-            cd Vision-Parking && timeout 25m ./run_e2e.sh
+          script: bash Vision-Parking/ci_emulator_setup.sh
 
       - name: Upload test report
         uses: actions/upload-artifact@v4
