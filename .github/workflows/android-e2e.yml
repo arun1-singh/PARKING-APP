@@ -134,46 +134,79 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -memory 4096 -wipe-data -partition-size 8192 -gpu swiftshader_indirect -camera-back none -camera-front none
           disable-animations: true
           script: |
-            echo "Waiting for device..."
+            echo "=== Step 1: Wait for device ==="
             adb wait-for-device
-            
-            echo "Waiting for system to be ready..."
+
+            echo "=== Step 2: Wait for boot ==="
             adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-            
-            echo "Waiting for package manager..."
-            adb shell 'while ! pm list packages > /dev/null 2>&1; do sleep 1; done'
-            
-            echo "Device ready — installing APK first..."
-            adb install -r Vision-Parking/app/build/outputs/apk/debug/app-debug.apk
-            
-            echo "Verifying app installation..."
-            adb shell pm list packages | grep $APP_PACKAGE
-            
-            # Grant permissions AFTER install so the package is registered in the package manager
-            echo "Granting runtime permissions..."
+            echo "✅ Boot completed"
+
+            echo "=== Step 3: Wait for package manager to be truly stable ==="
+            for i in $(seq 1 90); do
+              if adb shell pm list packages > /dev/null 2>&1; then
+                echo "✅ Package manager stable after ${i}s"
+                break
+              fi
+              sleep 2
+            done
+
+            echo "=== Step 4: Extra stabilization wait (20s) ==="
+            sleep 20
+
+            echo "=== Step 5: Dismiss system dialogs ==="
+            adb shell input keyevent KEYCODE_BACK  2>/dev/null || true
+            sleep 1
+            adb shell input keyevent KEYCODE_ENTER 2>/dev/null || true
+            sleep 1
+
+            echo "=== Step 6: Install APK with retry ==="
+            INSTALL_SUCCESS=0
+            for attempt in $(seq 1 5); do
+              echo "Install attempt $attempt/5..."
+              if ! adb shell pm list packages > /dev/null 2>&1; then
+                echo "Package manager not ready, waiting 30s..."
+                sleep 30
+                continue
+              fi
+              if adb install -r Vision-Parking/app/build/outputs/apk/debug/app-debug.apk 2>&1; then
+                INSTALL_SUCCESS=1
+                echo "✅ APK installed on attempt $attempt"
+                break
+              else
+                echo "❌ Install failed on attempt $attempt, waiting 30s..."
+                sleep 30
+              fi
+            done
+            if [ $INSTALL_SUCCESS -ne 1 ]; then
+              echo "❌ APK install failed after 5 attempts"
+              adb devices
+              exit 1
+            fi
+
+            echo "=== Step 7: Verify installation ==="
+            adb shell pm list packages | grep $APP_PACKAGE || { echo "❌ App not found after install"; exit 1; }
+
+            echo "=== Step 8: Grant permissions ==="
             adb shell pm grant $APP_PACKAGE android.permission.CAMERA || true
             adb shell pm grant $APP_PACKAGE android.permission.ACCESS_FINE_LOCATION || true
             adb shell pm grant $APP_PACKAGE android.permission.ACCESS_COARSE_LOCATION || true
             adb shell pm grant $APP_PACKAGE android.permission.WRITE_EXTERNAL_STORAGE || true
             adb shell pm grant $APP_PACKAGE android.permission.READ_EXTERNAL_STORAGE || true
-            
-            echo "Clearing app data to ensure clean state..."
+
+            echo "=== Step 9: Clear app data ==="
             adb shell pm clear $APP_PACKAGE || echo "Could not clear app data"
-            
-            echo "Starting app to verify it launches..."
+
+            echo "=== Step 10: Launch and verify app ==="
             adb shell am start -n $APP_PACKAGE/com.example.visionpark.activities.SplashScreenActivity
-            sleep 5
-            
-            echo "Checking if app is running..."
-            adb shell "ps | grep $APP_PACKAGE" || adb shell "ps -A | grep $APP_PACKAGE" || echo "App process not found"
-            
-            echo "Getting current activity..."
+            sleep 8
+            adb shell "ps -A 2>/dev/null | grep $APP_PACKAGE" || adb shell "ps 2>/dev/null | grep $APP_PACKAGE" || echo "App process not found (may be normal)"
             adb shell dumpsys activity activities | grep "mResumedActivity" || echo "Could not get current activity"
-            
-            echo "Stopping app before tests..."
+
+            echo "=== Step 11: Stop app before tests ==="
             adb shell am force-stop $APP_PACKAGE
-            
-            echo "Running E2E tests..."
+            sleep 2
+
+            echo "=== Step 12: Run E2E tests ==="
             cd Vision-Parking && timeout 25m ./run_e2e.sh
 
       - name: Upload test report
