@@ -20,7 +20,7 @@ import okhttp3.Response;
 
 public class ParkingApiService {
     private static final String TAG = "ParkingApiService";
-    private static final String BASE_URL = "http://10.0.2.2:5000"; // Android emulator localhost  
+    private static final String BASE_URL = "http://10.0.2.2:5000/api/v1"; // Android emulator localhost
     private static final String FALLBACK_URL = "http://10.0.2.2:80"; // Try nginx proxy as fallback
     // For physical device, use your computer's IP: "http://192.168.1.XXX:5000"
     

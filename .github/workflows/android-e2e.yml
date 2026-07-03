@@ -86,10 +86,12 @@ jobs:
 
       - name: Wait for backend API to be ready
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             if curl -s http://localhost:5000/health; then exit 0; fi
             sleep 5
           done
+          echo "Backend API did not start in time"
+          docker compose logs
           exit 1
         working-directory: ./Backend
 
@@ -141,21 +143,22 @@ jobs:
             echo "Waiting for package manager..."
             adb shell 'while ! pm list packages > /dev/null 2>&1; do sleep 1; done'
             
-            echo "Device ready, granting permissions..."
+            echo "Device ready — installing APK first..."
+            adb install -r Vision-Parking/app/build/outputs/apk/debug/app-debug.apk
+            
+            echo "Verifying app installation..."
+            adb shell pm list packages | grep $APP_PACKAGE
+            
+            # Grant permissions AFTER install so the package is registered in the package manager
+            echo "Granting runtime permissions..."
             adb shell pm grant $APP_PACKAGE android.permission.CAMERA || true
             adb shell pm grant $APP_PACKAGE android.permission.ACCESS_FINE_LOCATION || true
             adb shell pm grant $APP_PACKAGE android.permission.ACCESS_COARSE_LOCATION || true
             adb shell pm grant $APP_PACKAGE android.permission.WRITE_EXTERNAL_STORAGE || true
             adb shell pm grant $APP_PACKAGE android.permission.READ_EXTERNAL_STORAGE || true
             
-            echo "Installing APK..."
-            adb install -r Vision-Parking/app/build/outputs/apk/debug/app-debug.apk
-            
             echo "Clearing app data to ensure clean state..."
             adb shell pm clear $APP_PACKAGE || echo "Could not clear app data"
-            
-            echo "Verifying app installation..."
-            adb shell pm list packages | grep $APP_PACKAGE
             
             echo "Starting app to verify it launches..."
             adb shell am start -n $APP_PACKAGE/com.example.visionpark.activities.SplashScreenActivity

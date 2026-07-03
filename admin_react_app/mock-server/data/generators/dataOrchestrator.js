@@ -358,9 +358,9 @@ class DataOrchestrator {
       
       // Ensure the first admin has deterministic credentials for easy login
       if (i === 0) {
-        admin.user_email = 'admin@parking.com';
+        admin.user_email = 'admin10@parking.com';
         admin.user_name = 'Admin User';
-        // Password for all generated admins is 'admin123' (set in userGenerator)
+        admin.password_hash = await this.userGenerator.generatePasswordHash('password123');
       }
       
       // Customize admin details

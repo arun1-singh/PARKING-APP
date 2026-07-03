@@ -16,7 +16,7 @@ public class UserVehicle implements Serializable {
     private Integer year;
     private String vehicleType;
     private String color;
-    private boolean isActive;
+    private boolean isActive = true;
     private String createdAt;
     private String updatedAt;
     
@@ -27,6 +27,28 @@ public class UserVehicle implements Serializable {
     public UserVehicle(String registrationNumber, String vehicleName) {
         this.registrationNumber = registrationNumber;
         this.vehicleName = vehicleName;
+        this.isActive = true;
+    }
+
+    // 4-parameter constructor for tests
+    public UserVehicle(int vehicleId, String registrationNumber, String vehicleName, String vehicleType) {
+        this.vehicleId = vehicleId;
+        this.registrationNumber = registrationNumber;
+        this.vehicleName = vehicleName;
+        this.vehicleType = vehicleType;
+        this.isActive = true;
+    }
+
+    // 8-parameter constructor for tests
+    public UserVehicle(int vehicleId, String registrationNumber, String vehicleName, String make, String model, Integer year, String vehicleType, String color) {
+        this.vehicleId = vehicleId;
+        this.registrationNumber = registrationNumber;
+        this.vehicleName = vehicleName;
+        this.make = make;
+        this.model = model;
+        this.year = year;
+        this.vehicleType = vehicleType;
+        this.color = color;
         this.isActive = true;
     }
     
@@ -142,6 +164,45 @@ public class UserVehicle implements Serializable {
         this.updatedAt = updatedAt;
     }
     
+    public String getDisplayName() {
+        if (vehicleName != null && !vehicleName.trim().isEmpty()) {
+            return vehicleName + " (" + registrationNumber + ")";
+        }
+        return registrationNumber;
+    }
+
+    public String getVehicleDetails() {
+        StringBuilder sb = new StringBuilder();
+        if (make != null && !make.trim().isEmpty()) {
+            sb.append(make.trim());
+        }
+        if (model != null && !model.trim().isEmpty()) {
+            if (sb.length() > 0) {
+                sb.append(" ");
+            }
+            sb.append(model.trim());
+        }
+        if (year != null && year > 0) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(year);
+        }
+        if (sb.length() == 0) {
+            return "Vehicle details not available";
+        }
+        return sb.toString();
+    }
+
+    public String getFormattedVehicleType() {
+        if (vehicleType == null || vehicleType.trim().isEmpty()) {
+            return "Car";
+        }
+        String type = vehicleType.trim();
+        // Capitalize first letter and lowercase the rest
+        return type.substring(0, 1).toUpperCase() + type.substring(1).toLowerCase();
+    }
+
     @Override
     public String toString() {
         return "UserVehicle{" +
@@ -153,6 +214,7 @@ public class UserVehicle implements Serializable {
                 ", year=" + year +
                 ", vehicleType='" + vehicleType + '\'' +
                 ", color='" + color + '\'' +
+                ", isActive=" + isActive +
                 '}';
     }
 }

@@ -4,94 +4,127 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/white">
+    android:background="#F5F5F5">
 
-    <!-- Main Content -->
-    <ScrollView
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/green"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="My Bookings"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/white" />
+
+        <TextView
+            android:id="@+id/tvBookingSummary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Loading bookings..."
+            android:textSize="14sp"
+            android:textColor="#CCFFFFFF"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+
+    <!-- Tab Layout -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        app:tabSelectedTextColor="@color/green"
+        app:tabIndicatorColor="@color/green" />
+
+    <!-- Book New Slot Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnBookNewSlot"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="12dp"
+        android:text="+ Book a Parking Slot"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/green"
+        app:cornerRadius="8dp"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp" />
+
+    <!-- Loading -->
+    <LinearLayout
+        android:id="@+id/layoutLoading"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:fillViewport="true">
-
-        <LinearLayout
-            android:layout_width="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp"
-            android:gravity="center">
+            android:text="Loading bookings..."
+            android:textColor="@color/gray"
+            android:layout_marginTop="12dp" />
+    </LinearLayout>
 
-            <!-- Bookings Icon -->
-            <ImageView
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:src="@drawable/ic_bookings"
-                android:layout_marginBottom="24dp"
-                app:tint="@color/gray" />
+    <!-- Empty State -->
+    <LinearLayout
+        android:id="@+id/layoutEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_bookings"
+            app:tint="@color/gray" />
+        <TextView
+            android:id="@+id/tvEmptyMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No bookings yet"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/gray"
+            android:layout_marginTop="16dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap '+ Book a Parking Slot' to reserve your spot"
+            android:textSize="14sp"
+            android:textColor="@color/gray"
+            android:gravity="center"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
 
-            <!-- Title -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="My Bookings"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="@color/green"
-                android:layout_marginBottom="16dp" />
+    <!-- Bookings List -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-            <!-- Placeholder Text -->
-            <TextView
-                android:id="@+id/tvPlaceholder"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Your bookings will be displayed here"
-                android:textSize="16sp"
-                android:textColor="@color/gray"
-                android:gravity="center"
-                android:lineSpacingExtra="4dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp" />
-
-            <!-- Coming Soon Card -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/light_green">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp"
-                    android:gravity="center">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="🚧 Coming Soon"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/green"
-                        android:layout_marginBottom="8dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="This feature will be available in a future update. Stay tuned!"
-                        android:textSize="14sp"
-                        android:textColor="@color/gray"
-                        android:gravity="center"
-                        android:lineSpacingExtra="2dp" />
-
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
-
-        </LinearLayout>
-
-    </ScrollView>
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewBookings"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="8dp"
+            android:clipToPadding="false" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <!-- Bottom Navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView

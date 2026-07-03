@@ -29,57 +29,72 @@ class AuthService {
     //     throw new Error(error.message || "Login failed");
     //   }
     // }
-    async login(credentials) {
-     try {
-      const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, {
-        user_email: credentials.user_email,
-        user_password: credentials.user_password,
-        role: credentials.role,
-      });
+   async login(credentials) {
+  try {
+    const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, {
+      user_email: credentials.user_email,
+      user_password: credentials.user_password,
+      role: credentials.role || "super_admin",
+    });
 
-      const { data } = response;
+    const { data } = response;
 
-      // Validate response structure
-      if (!data.access_token || !data.user_id) {
-        throw new Error("Invalid response from server");
+    // Validate response
+    if (!data.access_token || !data.user_id) {
+      throw new Error("Invalid response from server");
+    }
+
+    // 🔥🔥🔥 ADD THIS (MOST IMPORTANT FIX)
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.access_token);
+
+    localStorage.setItem(
+      STORAGE_KEYS.AUTH_USER,
+      JSON.stringify({
+        user_id: data.user_id,
+        username: data.username,
+        user_email: data.user_email,
+        role: data.role,
+        user_phone_no: data.user_phone_no,
+        user_address: data.user_address,
+      })
+    );
+
+    // Return structured user data
+    return {
+      access_token: data.access_token,
+      user: {
+        user_id: data.user_id,
+        username: data.username,
+        user_email: data.user_email,
+        role: data.role,
+        user_phone_no: data.user_phone_no,
+        user_address: data.user_address,
+      },
+    };
+
+  } catch (error) {
+    if (error.response) {
+      const { status, data } = error.response;
+
+      switch (status) {
+        case 400:
+          throw new Error(data?.message || "Invalid login credentials");
+        case 401:
+          throw new Error("Invalid email, password, or role");
+        case 403:
+          throw new Error("Access denied for this role");
+        case 429:
+          throw new Error("Too many login attempts. Please try again later");
+        default:
+          throw new Error(data?.message || "Login failed. Please try again");
       }
-
-      // Return structured user data
-      return {
-        access_token: data.access_token,
-        user: {
-          user_id: data.user_id,
-          username: data.username,
-          user_email: data.user_email,
-          role: data.role,
-          user_phone_no: data.user_phone_no,
-          user_address: data.user_address,
-        },
-      };
-    } catch (error) {
-      // Handle specific login errors
-      if (error.response) {
-        const { status, data } = error.response;
-
-        switch (status) {
-          case 400:
-            throw new Error(data?.message || "Invalid login credentials");
-          case 401:
-            throw new Error("Invalid email, password, or role");
-          case 403:
-            throw new Error("Access denied for this role");
-          case 429:
-            throw new Error("Too many login attempts. Please try again later");
-          default:
-            throw new Error(data?.message || "Login failed. Please try again");
-        }
-      } else if (error.request) {
-        throw new Error("Network error. Please check your connection");
-      } else {
-        throw new Error(error.message || "An unexpected error occurred");
-      }
+    } else if (error.request) {
+      throw new Error("Network error. Please check your connection");
+    } else {
+      throw new Error(error.message || "An unexpected error occurred");
     }
   }
+}
 
   // Logout method
   logout() {

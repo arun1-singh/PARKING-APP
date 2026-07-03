@@ -587,7 +587,7 @@ Vision-Parking/
 │   │   │   │   ├── models/              # Data models
 │   │   │   │   ├── network/             # API client (Retrofit)
 │   │   │   │   └── utils/               # Utility classes
-│   │   │   ├── res/                     # Resources (layouts, drawables, etc.)
+│   │   │   ├── res/                        # Resources (layouts, drawables, etc.)
 │   │   │   └── AndroidManifest.xml      # App manifest
 │   │   └── test/                        # Unit tests
 │   └── build.gradle.kts                 # App-level build config

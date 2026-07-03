@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --force",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -35,12 +35,14 @@
     "test:fresh:headed": "npm run test:clean && npx playwright test --headed --reporter=html"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.10",
     "@tailwindcss/vite": "^4.1.11",
-    "axios": "^1.11.0",
+    "axios": "^1.15.2",
+    "date-fns": "^4.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^7.7.1",
-    "recharts": "^3.1.2",
+    "react-router-dom": "^7.14.2",
+    "recharts": "^3.8.1",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
@@ -54,6 +56,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
     "rimraf": "^6.0.1",
+    "terser": "^5.46.2",
     "vite": "^7.0.4"
   }
 }

@@ -1,3 +1,4 @@
+import pytest
 from appium.webdriver.common.appiumby import AppiumBy
 from tests.common import wait_for_element, assert_element_is_visible
 from tests.auth_helpers import (
@@ -27,9 +28,8 @@ def test_login_with_incorrect_password(driver):
     phone = generate_unique_phone()
     address = REGISTER_ADDRESS
 
-    # 2. Navigate to registration
+    # 2. Navigate to registration screen
     wait_for_element(driver, (AppiumBy.ID, 'btnGetStarted')).click()
-    wait_for_element(driver, (AppiumBy.ID, 'tvRegister')).click()
 
     # 3. Register the user to ensure the account exists
     register_user(driver, unique_username, unique_email, correct_password, phone, address)
@@ -38,10 +38,7 @@ def test_login_with_incorrect_password(driver):
     # The 'register_user' helper leaves us on the login screen, so we can call login directly.
     login(driver, unique_email, incorrect_password, expect_success=False)
 
-
     # 5. Verify the user is still on the login screen
     # We check for the "Don't have an account? Register" text view, which only exists on the login screen.
-    # This confirms the login failed.
-    # A more specific check for an actual error toast/message could be added if its ID is known.
     login_screen_indicator = (AppiumBy.ID, 'tvRegister')
     assert_element_is_visible(driver, login_screen_indicator)

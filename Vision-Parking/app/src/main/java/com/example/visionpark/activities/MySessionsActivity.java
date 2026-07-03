@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.example.visionpark.activities.PaymentActivity;
 import com.example.visionpark.R;
 import com.example.visionpark.adapters.SessionAdapter;
 import com.example.visionpark.models.ParkingSession;
@@ -28,6 +29,7 @@ import com.example.visionpark.network.ApiService;
 import com.example.visionpark.network.SessionCheckoutRequest;
 import com.example.visionpark.services.SessionTrackingService;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.tabs.TabLayout;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import java.util.ArrayList;
@@ -44,6 +46,9 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
     private TextView tvSessionSummary;
     
     private List<ParkingSession> allSessions = new ArrayList<>();
+    private List<ParkingSession> activeSessions = new ArrayList<>();
+    private List<ParkingSession> completedSessions = new ArrayList<>();
+    private int currentTab = 0; // 0 = Active, 1 = Completed
     private SessionTrackingService.SessionBinder sessionBinder;
     private ServiceConnection serviceConnection;
     private boolean isServiceBound = false;
@@ -62,6 +67,7 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
         initializeViews();
         setupRecyclerView();
         setupSwipeRefresh();
+        setupTabs();
         setupBottomNavigation();
         bindToSessionTrackingService();
         
@@ -97,6 +103,40 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
         swipeRefreshLayout.setOnRefreshListener(this::loadSessions);
     }
     
+    private void setupTabs() {
+        TabLayout tabLayout = findViewById(R.id.tabLayout);
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                currentTab = tab.getPosition();
+                updateTabDisplay();
+            }
+            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {}
+        });
+    }
+
+    private void updateSessionInList(List<ParkingSession> list, ParkingSession updated) {
+        for (int i = 0; i < list.size(); i++) {
+            if (updated.getTicketId() != null && updated.getTicketId().equals(list.get(i).getTicketId())) {
+                list.set(i, updated);
+                return;
+            }
+        }
+    }
+
+    private void updateTabDisplay() {
+        List<ParkingSession> toShow = currentTab == 0 ? activeSessions : completedSessions;
+        sessionAdapter.updateSessions(new ArrayList<>(toShow));
+        if (toShow.isEmpty()) {
+            layoutEmptyState.setVisibility(android.view.View.VISIBLE);
+            recyclerViewSessions.setVisibility(android.view.View.GONE);
+        } else {
+            layoutEmptyState.setVisibility(android.view.View.GONE);
+            recyclerViewSessions.setVisibility(android.view.View.VISIBLE);
+        }
+    }
+
     private void setupBottomNavigation() {
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottomNavigationView);
         bottomNavigationView.setSelectedItemId(R.id.nav_sessions);
@@ -138,6 +178,11 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
                     @Override
                     public void onSessionUpdated(ParkingSession session) {
                         runOnUiThread(() -> {
+                            // Update backing lists only
+                            updateSessionInList(activeSessions, session);
+                            updateSessionInList(completedSessions, session);
+                            updateSessionInList(allSessions, session);
+                            // Update only this specific card — no full list re-render
                             sessionAdapter.updateSession(session);
                             updateSessionSummary();
                         });
@@ -168,6 +213,8 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
         
         // Clear existing sessions to prevent duplicates
         allSessions.clear();
+        activeSessions.clear();
+        completedSessions.clear();
         
         // Check network connectivity
         if (!isNetworkAvailable()) {
@@ -177,9 +224,8 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
             
             createMockActiveSessions();
             createMockPastSessions();
-            sessionAdapter.updateSessions(allSessions);
+            updateTabDisplay();
             updateSessionSummary();
-            updateEmptyState();
             showLoading(false);
             swipeRefreshLayout.setRefreshing(false);
             return;
@@ -187,11 +233,8 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
         
         android.util.Log.d("MySessionsActivity", "Network available - loading sessions from API");
         
-        // Load active sessions
+        // Load active sessions first, history loads after active completes
         loadActiveSessions();
-        
-        // Load session history
-        loadSessionHistory();
     }
     
     private void loadActiveSessions() {
@@ -223,22 +266,19 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
                     android.util.Log.d("MySessionsActivity", "Response body success: " + response.body().isSuccess());
                     
                     if (response.body().isSuccess()) {
-                        List<ParkingSession> activeSessions = response.body().getData();
+                        List<ParkingSession> fetchedActive = response.body().getData();
                         android.util.Log.d("MySessionsActivity", "Active sessions count: " + 
-                                          (activeSessions != null ? activeSessions.size() : "null"));
+                                          (fetchedActive != null ? fetchedActive.size() : "null"));
                         
-                        if (activeSessions != null && !activeSessions.isEmpty()) {
-                            // Add active sessions to the list
-                            for (ParkingSession session : activeSessions) {
+                        if (fetchedActive != null && !fetchedActive.isEmpty()) {
+                            for (ParkingSession session : fetchedActive) {
                                 allSessions.add(session);
-                                
-                                // Start tracking active sessions
+                                activeSessions.add(session);
                                 if (isServiceBound) {
                                     sessionBinder.startTrackingSession(session);
                                 }
                             }
-                            
-                            android.util.Log.d("MySessionsActivity", "Loaded " + activeSessions.size() + " active session(s) from API");
+                            android.util.Log.d("MySessionsActivity", "Loaded " + fetchedActive.size() + " active session(s) from API");
                         } else {
                             android.util.Log.d("MySessionsActivity", "No active sessions found from API");
                         }
@@ -260,10 +300,13 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
                     createMockActiveSessions();
                 }
                 
-                // Update UI after loading active sessions
-                sessionAdapter.updateSessions(allSessions);
-                updateSessionSummary();
-                updateEmptyState();
+                // Update active tab display, then load history
+                runOnUiThread(() -> {
+                    if (currentTab == 0) updateTabDisplay();
+                    updateSessionSummary();
+                });
+                // Chain: load history only after active is done
+                loadSessionHistory();
             }
             
             @Override
@@ -287,9 +330,12 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
                 
                 // Fallback to mock data
                 createMockActiveSessions();
-                sessionAdapter.updateSessions(allSessions);
-                updateSessionSummary();
-                updateEmptyState();
+                runOnUiThread(() -> {
+                    if (currentTab == 0) updateTabDisplay();
+                    updateSessionSummary();
+                });
+                // Chain: load history even if active failed
+                loadSessionHistory();
             }
         });
     }
@@ -314,9 +360,19 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
                                           (pastSessions != null ? pastSessions.size() : "null"));
                         
                         if (pastSessions != null && !pastSessions.isEmpty()) {
-                            // Add past sessions to the list
-                            allSessions.addAll(pastSessions);
-                            android.util.Log.d("MySessionsActivity", "Loaded " + pastSessions.size() + " past session(s) from API");
+                            java.util.Set<String> existingIds = new java.util.HashSet<>();
+                            for (ParkingSession s : allSessions) {
+                                if (s.getTicketId() != null) existingIds.add(s.getTicketId());
+                            }
+                            int added = 0;
+                            for (ParkingSession s : pastSessions) {
+                                if (s.getTicketId() != null && !existingIds.contains(s.getTicketId())) {
+                                    allSessions.add(s);
+                                    completedSessions.add(s);
+                                    added++;
+                                }
+                            }
+                            android.util.Log.d("MySessionsActivity", "Loaded " + added + " past session(s) from API (deduplicated)");
                         } else {
                             android.util.Log.d("MySessionsActivity", "No past sessions found from API");
                         }
@@ -330,12 +386,12 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
                 }
                 
                 // Update UI after loading all sessions
-                sessionAdapter.updateSessions(allSessions);
-                updateSessionSummary();
-                updateEmptyState();
-                
-                swipeRefreshLayout.setRefreshing(false);
-                showLoading(false);
+                runOnUiThread(() -> {
+                    if (currentTab == 1) updateTabDisplay();
+                    updateSessionSummary();
+                    swipeRefreshLayout.setRefreshing(false);
+                    showLoading(false);
+                });
             }
             
             @Override
@@ -345,12 +401,12 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
                 
                 // Fallback to mock data
                 createMockPastSessions();
-                sessionAdapter.updateSessions(allSessions);
-                updateSessionSummary();
-                updateEmptyState();
-                
-                swipeRefreshLayout.setRefreshing(false);
-                showLoading(false);
+                runOnUiThread(() -> {
+                    if (currentTab == 1) updateTabDisplay();
+                    updateSessionSummary();
+                    swipeRefreshLayout.setRefreshing(false);
+                    showLoading(false);
+                });
             }
         });
     }
@@ -528,29 +584,28 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
     
     private void processCheckout(String sessionId) {
         Toast.makeText(this, "Processing checkout...", Toast.LENGTH_SHORT).show();
-        
-        ApiService apiService = ApiClient.getClient().create(ApiService.class);
-        SessionCheckoutRequest request = new SessionCheckoutRequest(sessionId, "card");
-        
-        apiService.endParkingSession(request).enqueue(new retrofit2.Callback<ApiService.ApiResponse<PaymentInfo>>() {
-            @Override
-            public void onResponse(retrofit2.Call<ApiService.ApiResponse<PaymentInfo>> call, 
-                                 retrofit2.Response<ApiService.ApiResponse<PaymentInfo>> response) {
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    PaymentInfo paymentInfo = response.body().getData();
-                    handleSuccessfulCheckout(sessionId, paymentInfo);
-                } else {
-                    // If API fails, simulate successful checkout for demonstration
-                    simulateSuccessfulCheckout(sessionId);
-                }
-            }
-            
-            @Override
-            public void onFailure(retrofit2.Call<ApiService.ApiResponse<PaymentInfo>> call, Throwable t) {
-                // If API fails, simulate successful checkout for demonstration
-                simulateSuccessfulCheckout(sessionId);
-            }
-        });
+
+        // Find the session to get amount
+        ParkingSession session = findSessionById(sessionId);
+        double amount = session != null ? session.getCurrentCost() : 0.0;
+        String lotName = session != null ? session.getParkingLotName() : "Parking";
+
+        // Launch payment screen instead of direct checkout
+        Intent payIntent = new Intent(this, PaymentActivity.class);
+        payIntent.putExtra(PaymentActivity.EXTRA_PAYMENT_FOR,  "session");
+        payIntent.putExtra(PaymentActivity.EXTRA_REFERENCE_ID, sessionId);
+        payIntent.putExtra(PaymentActivity.EXTRA_AMOUNT,       amount);
+        payIntent.putExtra(PaymentActivity.EXTRA_DESCRIPTION,  "Parking at " + lotName + " | Ticket: " + sessionId);
+        startActivityForResult(payIntent, 1001);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1001 && resultCode == RESULT_OK) {
+            // Payment succeeded — reload sessions
+            loadSessions();
+        }
     }
     
     private void handleSuccessfulCheckout(String sessionId, PaymentInfo paymentInfo) {
@@ -582,10 +637,16 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
         // Show payment success dialog
         showPaymentSuccessDialog(paymentInfo);
         
-        // Reload sessions to ensure consistency with backend
-        new android.os.Handler().postDelayed(() -> {
-            loadSessions();
-        }, 1000);
+        // Move session from active to completed list directly (no reload flicker)
+        runOnUiThread(() -> {
+            ParkingSession s = findSessionById(sessionId);
+            if (s != null) {
+                activeSessions.remove(s);
+                if (!completedSessions.contains(s)) completedSessions.add(s);
+            }
+            updateTabDisplay();
+            updateSessionSummary();
+        });
     }
     
     private void simulateSuccessfulCheckout(String sessionId) {
@@ -616,10 +677,16 @@ public class MySessionsActivity extends AppCompatActivity implements SessionAdap
         
         Toast.makeText(this, "Checkout completed successfully!", Toast.LENGTH_SHORT).show();
         
-        // Reload sessions to ensure consistency
-        new android.os.Handler().postDelayed(() -> {
-            loadSessions();
-        }, 1000);
+        // Move session from active to completed list directly (no reload flicker)
+        runOnUiThread(() -> {
+            ParkingSession s = findSessionById(sessionId);
+            if (s != null) {
+                activeSessions.remove(s);
+                if (!completedSessions.contains(s)) completedSessions.add(s);
+            }
+            updateTabDisplay();
+            updateSessionSummary();
+        });
     }
     
     private void showPaymentSuccessDialog(PaymentInfo paymentInfo) {

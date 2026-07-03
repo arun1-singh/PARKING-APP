@@ -1,7 +1,52 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, request } from '@playwright/test';
 import LoginPage from '../pages/LoginPage.js';
 import AdminManagementPage from '../pages/AdminManagementPage.js';
 import { testCredentials } from '../utils/test-data.js';
+
+// Helper: Log in via API and inject credentials into localStorage,
+// then navigate directly to the target page — no UI login form needed.
+async function loginViaApi(page, credentials = testCredentials.superAdmin) {
+  // 1. Call the mock server login endpoint directly
+  const apiContext = await request.newContext({ baseURL: 'http://localhost:3001' });
+  const loginResponse = await apiContext.post('/auth/login', {
+    data: {
+      user_email: credentials.email,
+      user_password: credentials.password,
+      role: credentials.role,
+    },
+  });
+
+  if (!loginResponse.ok()) {
+    const body = await loginResponse.text();
+    throw new Error(`API login failed (${loginResponse.status()}): ${body}`);
+  }
+
+  const data = await loginResponse.json();
+  const token = data.access_token;
+  // Must match exactly what authService.login() stores in localStorage
+  const user = {
+    user_id: data.user_id,
+    username: data.username,
+    user_email: data.user_email,
+    role: data.role,  // use role from API response (e.g. 'super_admin')
+    user_phone_no: data.user_phone_no,
+    user_address: data.user_address,
+  };
+
+  await apiContext.dispose();
+
+  // 2. Open a blank page, inject the token + user into localStorage,
+  //    then navigate — the React app will read these and consider us authenticated.
+  await page.goto('http://localhost:5173/login');
+  await page.waitForLoadState('load');
+  await page.evaluate(
+    ({ token, user }) => {
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('auth_user', JSON.stringify(user));
+    },
+    { token, user }
+  );
+}
 
 test.describe('Admin Management Page Tests', () => {
   let loginPage;
@@ -10,27 +55,24 @@ test.describe('Admin Management Page Tests', () => {
   test.beforeEach(async ({ page }) => {
     loginPage = new LoginPage(page);
     adminManagementPage = new AdminManagementPage(page);
-    
+
+    // Authenticate via API (fast, reliable — no UI login form)
+    await loginViaApi(page, testCredentials.superAdmin);
+
+    // Navigate to admin management page
+    await page.goto('http://localhost:5173/admin-management');
+    await page.waitForLoadState('load');
+
+    // Wait for the page title to confirm we are on the right page
     try {
-      // Login as super admin first
-      await loginPage.navigateToLogin();
-      await loginPage.loginAsSuperAdmin();
-      await loginPage.waitForLoginSuccess();
-      
-      // Navigate to admin management
-      await adminManagementPage.navigateToAdminManagement();
-      await adminManagementPage.waitForAdminManagementLoad();
-    } catch (error) {
-      console.log('BeforeEach setup error:', error.message);
-      // Continue anyway, some tests might still work
+      await page.waitForSelector('h1:has-text("Admin Management")', { timeout: 15000 });
+    } catch {
+      // Fallback: just wait for any main content
+      await page.waitForSelector('main, [role="main"], .p-6', { timeout: 10000 }).catch(() => {});
     }
   });
 
   test.afterEach(async ({ page }) => {
-    try {
-      await page.unroute('**');
-    } catch {}
-    
     try {
       await page.evaluate(() => {
         localStorage.clear();

@@ -67,7 +67,7 @@ const Login = () => {
     
     try {
       // Auto-determine role based on email
-      const role = determineRoleFromEmail(formData.user_email);
+      const role = determineRoleFromEmail(formData.user_email) || 'admin';
       
       // Create login payload with auto-determined role
       const loginPayload = {

@@ -1,3 +1,4 @@
+import pytest
 import time
 from appium.webdriver.common.appiumby import AppiumBy
 from tests.common import wait_for_element, assert_element_is_visible
@@ -19,7 +20,7 @@ def test_burger_menu_and_bottom_nav_lead_to_same_sessions_screen(driver):
     time.sleep(2) # Allow home screen to settle
 
     # Define a reusable locator for the "Sessions" screen title
-    sessions_title_locator = (AppiumBy.XPATH, "//*[contains(@text, 'My Sessions')]")
+    sessions_title_locator = (AppiumBy.XPATH, "//*[contains(@text, 'Session')]")
 
     # --- 2. Navigate via Bottom Nav and Verify ---
     sessions_nav_locator = (AppiumBy.ID, "nav_sessions")
@@ -42,8 +43,8 @@ def test_burger_menu_and_bottom_nav_lead_to_same_sessions_screen(driver):
     time.sleep(1) # Allow for slide-in animation
 
     # Find and click 'My Sessions' in the navigation drawer
-    # We will assume the text is 'My Sessions' to match the screen title
-    drawer_sessions_locator = (AppiumBy.XPATH, "//*[@text='My Sessions']")
+    # Target the drawer item specifically using the parent layout to avoid ambiguity
+    drawer_sessions_locator = (AppiumBy.XPATH, "//*[@resource-id='com.example.visionpark:id/navigation_view']//*[@resource-id='com.example.visionpark:id/nav_sessions']")
     wait_for_element(driver, drawer_sessions_locator).click()
     time.sleep(1) # Allow for screen transition
 

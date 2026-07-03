@@ -63,7 +63,11 @@ public class SlotLocation implements Serializable {
         StringBuilder location = new StringBuilder();
         
         if (floorName != null && !floorName.isEmpty()) {
-            location.append("Floor ").append(floorName);
+            if (floorName.toLowerCase().contains("floor")) {
+                location.append(floorName);
+            } else {
+                location.append("Floor ").append(floorName);
+            }
         }
         
         if (rowName != null && !rowName.isEmpty()) {

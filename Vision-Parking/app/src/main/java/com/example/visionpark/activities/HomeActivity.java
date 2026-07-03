@@ -352,7 +352,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d(TAG, "🔍 Starting fetchNearbyParking for coordinates: " + lat + ", " + lng);
         
         // Use API service to get parking lots
-        parkingApiService.getNearbyParkingLots(lat, lng, 20.0, new ParkingApiService.ParkingLotsCallback() {
+        parkingApiService.getNearbyParkingLots(lat, lng, 20000, new ParkingApiService.ParkingLotsCallback() {
             @Override
             public void onSuccess(List<ParkingLot> parkingLots) {
                 // Run on UI thread
@@ -392,8 +392,11 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Log.d(TAG, "Falling back to local JSON data");
                     try {
                         List<ParkingLot> allLots = ParkingDataLoader.loadParkingLotsFromAssets(HomeActivity.this);
+                        // Use final variables for lambda
+                        final double finalLat = lat;
+                        final double finalLng = lng;
                         List<ParkingLot> nearbyLots = ParkingDataLoader.getNearbyParkingLots(
-                           HomeActivity.this, allLots, lat, lng, 20.0);
+                           HomeActivity.this, allLots, finalLat, finalLng, 20.0);
                         
                         // Store all nearby lots for filtering
                         allParkingLots = new ArrayList<>(nearbyLots);
@@ -791,6 +794,10 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
     
     private void createLocationCallback() {
+        // Default Delhi location fallback
+        final double DEFAULT_LAT = 28.600765;
+        final double DEFAULT_LNG = 77.307174;
+
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locationResult) {
@@ -873,6 +880,12 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     
     private void updateMapWithLocation(Location location) {
         if (mMap == null || location == null) {
+            return;
+        }
+        // Ignore emulator fake default coordinates (Google HQ, California)
+        if (Math.abs(location.getLatitude() - 37.4219983) < 0.001 &&
+            Math.abs(location.getLongitude() - (-122.084)) < 0.001) {
+            android.util.Log.w("HomeActivity", "Ignoring emulator fake GPS coordinates");
             return;
         }
         
@@ -999,6 +1012,9 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }
                         
                         Marker marker = mMap.addMarker(options);
+                        if (marker != null) {
+                            Log.d(TAG, "✓ Added marker for: " + markerData.lot.getName());
+                        }
                         if (marker != null) {
                             marker.setTag(markerData.lot);
                             parkingMarkers.add(marker);

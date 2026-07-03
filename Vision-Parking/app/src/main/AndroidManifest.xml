@@ -51,6 +51,15 @@
             android:name=".activities.BookingsActivity"
             android:exported="true" />
         <activity
+            android:name=".activities.PaymentActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Translucent"
+            android:windowSoftInputMode="adjustResize"
+            android:parentActivityName=".activities.BookingsActivity" />
+        <activity
+            android:name=".activities.PaymentSuccessActivity"
+            android:exported="false" />
+        <activity
             android:name=".activities.ParkingLotDetailsActivity"
             android:exported="false"
             android:parentActivityName=".activities.HomeActivity" />

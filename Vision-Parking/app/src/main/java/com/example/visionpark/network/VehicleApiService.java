@@ -24,7 +24,7 @@ import okhttp3.Response;
  */
 public class VehicleApiService {
     private static final String TAG = "VehicleApiService";
-    private static final String BASE_URL = "http://10.0.2.2:80"; // Use nginx proxy
+    private static final String BASE_URL = "http://10.0.2.2:5000/api/v1"; // Use nginx proxy
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     
     private final OkHttpClient client;

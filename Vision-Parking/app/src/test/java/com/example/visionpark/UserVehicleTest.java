@@ -53,7 +53,7 @@ public class UserVehicleTest {
         assertEquals("My Car", testVehicle.getVehicleName());
         assertEquals("Toyota", testVehicle.getMake());
         assertEquals("Camry", testVehicle.getModel());
-        assertEquals(2020, testVehicle.getYear());
+        assertEquals(Integer.valueOf(2020), testVehicle.getYear());
         assertEquals("car", testVehicle.getVehicleType());
         assertEquals("White", testVehicle.getColor());
         assertTrue(testVehicle.isActive());
@@ -166,7 +166,7 @@ public class UserVehicleTest {
         assertEquals("Civic", vehicle.getModel());
         
         vehicle.setYear(2019);
-        assertEquals(2019, vehicle.getYear());
+        assertEquals(Integer.valueOf(2019), vehicle.getYear());
         
         vehicle.setVehicleType("motorcycle");
         assertEquals("motorcycle", vehicle.getVehicleType());

@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.example.visionpark.activities.ParkingLotDetailsActivity;
+import com.example.visionpark.models.ParkingLot;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,20 +30,24 @@ public class ParkingLotDetailsActivityUITest {
     private Intent createTestIntent() {
         Intent intent = new Intent(ApplicationProvider.getApplicationContext(), ParkingLotDetailsActivity.class);
         
-        // Add test parking lot data
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_ID, 1);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_NAME, "Test Parking Lot");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_ADDRESS, "123 Test Street, Test City");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_LATITUDE, 28.6139);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_LONGITUDE, 77.2090);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_CAR_FEE, "₹50/hr");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TWO_WHEELER_FEE, "₹20/hr");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_CAR_SLOTS, 15);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TOTAL_CAR_SLOTS, 20);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_TWO_WHEELER_SLOTS, 8);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TOTAL_TWO_WHEELER_SLOTS, 10);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_PAYMENT_MODE, "Cash, Card, UPI");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_DISTANCE, 1.5);
+        // Create test parking lot object
+        ParkingLot parkingLot = new ParkingLot(
+            1,                                  // id
+            "Test Parking Lot",                 // name
+            28.6139,                            // latitude
+            77.2090,                            // longitude
+            "₹50/hr",                           // carFee
+            "₹20/hr",                           // twoWheelerFee
+            15,                                 // availableCarSlots
+            20,                                 // totalCarSlots
+            8,                                  // availableTwoWheelerSlots
+            10,                                 // totalTwoWheelerSlots
+            "Cash, Card, UPI"                   // paymentMode
+        );
+        parkingLot.setAddress("123 Test Street, Test City");
+        parkingLot.setDistance(1.5);
+        
+        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT, parkingLot);
         
         return intent;
     }
@@ -106,10 +111,20 @@ public class ParkingLotDetailsActivityUITest {
     @Test
     public void testFullParkingLotDisplay() {
         // Test display when parking lot is full
-        Intent intent = createTestIntent();
-        // Set available slots to 0 to simulate full parking
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_CAR_SLOTS, 0);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_TWO_WHEELER_SLOTS, 0);
+        Intent intent = new Intent(ApplicationProvider.getApplicationContext(), ParkingLotDetailsActivity.class);
+        
+        // Create parking lot with no available slots
+        ParkingLot parkingLot = new ParkingLot(
+            1, "Test Parking Lot", 28.6139, 77.2090,
+            "₹50/hr", "₹20/hr",
+            0, 20,  // No car slots available
+            0, 10,  // No two-wheeler slots available
+            "Cash, Card, UPI"
+        );
+        parkingLot.setAddress("123 Test Street, Test City");
+        parkingLot.setDistance(1.5);
+        
+        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT, parkingLot);
         
         try (ActivityScenario<ParkingLotDetailsActivity> scenario = ActivityScenario.launch(intent)) {
             // Verify availability status shows "Full"
@@ -123,12 +138,20 @@ public class ParkingLotDetailsActivityUITest {
     @Test
     public void testLimitedAvailabilityDisplay() {
         // Test display when parking lot has limited availability
-        Intent intent = createTestIntent();
-        // Set low availability to simulate limited parking
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_CAR_SLOTS, 2);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TOTAL_CAR_SLOTS, 20);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_TWO_WHEELER_SLOTS, 1);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TOTAL_TWO_WHEELER_SLOTS, 10);
+        Intent intent = new Intent(ApplicationProvider.getApplicationContext(), ParkingLotDetailsActivity.class);
+        
+        // Create parking lot with limited availability
+        ParkingLot parkingLot = new ParkingLot(
+            1, "Test Parking Lot", 28.6139, 77.2090,
+            "₹50/hr", "₹20/hr",
+            2, 20,  // Limited car slots
+            1, 10,  // Limited two-wheeler slots
+            "Cash, Card, UPI"
+        );
+        parkingLot.setAddress("123 Test Street, Test City");
+        parkingLot.setDistance(1.5);
+        
+        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT, parkingLot);
         
         try (ActivityScenario<ParkingLotDetailsActivity> scenario = ActivityScenario.launch(intent)) {
             // Verify availability status shows "Limited"
@@ -143,9 +166,18 @@ public class ParkingLotDetailsActivityUITest {
     @Test
     public void testFreeParkingDisplay() {
         // Test display for free parking
-        Intent intent = createTestIntent();
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_CAR_FEE, "Free");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TWO_WHEELER_FEE, "Free");
+        Intent intent = new Intent(ApplicationProvider.getApplicationContext(), ParkingLotDetailsActivity.class);
+        
+        ParkingLot parkingLot = new ParkingLot(
+            1, "Test Parking Lot", 28.6139, 77.2090,
+            "Free", "Free",
+            15, 20, 8, 10,
+            "Cash, Card, UPI"
+        );
+        parkingLot.setAddress("123 Test Street, Test City");
+        parkingLot.setDistance(1.5);
+        
+        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT, parkingLot);
         
         try (ActivityScenario<ParkingLotDetailsActivity> scenario = ActivityScenario.launch(intent)) {
             // Verify free parking is displayed
@@ -205,20 +237,17 @@ public class ParkingLotDetailsActivityUITest {
         // Test that activity handles Integer parking lot ID correctly
         Intent intent = new Intent(ApplicationProvider.getApplicationContext(), ParkingLotDetailsActivity.class);
         
-        // Pass parking lot ID as Integer (simulating HomeActivity behavior)
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_ID, 123);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_NAME, "Integer ID Test Lot");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_ADDRESS, "Test Address");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_LATITUDE, 28.6139);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_LONGITUDE, 77.2090);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_CAR_FEE, "₹30/hr");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TWO_WHEELER_FEE, "₹15/hr");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_CAR_SLOTS, 10);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TOTAL_CAR_SLOTS, 15);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_TWO_WHEELER_SLOTS, 5);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TOTAL_TWO_WHEELER_SLOTS, 8);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_PAYMENT_MODE, "Cash");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_DISTANCE, 2.0);
+        // Pass parking lot as object with Integer ID
+        ParkingLot parkingLot = new ParkingLot(
+            123, "Integer ID Test Lot", 28.6139, 77.2090,
+            "₹30/hr", "₹15/hr",
+            10, 15, 5, 8,
+            "Cash"
+        );
+        parkingLot.setAddress("Test Address");
+        parkingLot.setDistance(2.0);
+        
+        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT, parkingLot);
         
         try (ActivityScenario<ParkingLotDetailsActivity> scenario = ActivityScenario.launch(intent)) {
             // Verify that the activity launches successfully with Integer ID
@@ -231,26 +260,23 @@ public class ParkingLotDetailsActivityUITest {
 
     @Test
     public void testStringIdHandling() {
-        // Test that activity handles String parking lot ID correctly
+        // Test that activity handles parking lot correctly (ID is always int in ParkingLot model)
         Intent intent = new Intent(ApplicationProvider.getApplicationContext(), ParkingLotDetailsActivity.class);
         
-        // Pass parking lot ID as String
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_ID, "456");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_NAME, "String ID Test Lot");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_ADDRESS, "Test Address 2");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_LATITUDE, 28.7041);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_LONGITUDE, 77.1025);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_CAR_FEE, "₹40/hr");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TWO_WHEELER_FEE, "₹20/hr");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_CAR_SLOTS, 8);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TOTAL_CAR_SLOTS, 12);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_AVAILABLE_TWO_WHEELER_SLOTS, 3);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_TOTAL_TWO_WHEELER_SLOTS, 6);
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_PAYMENT_MODE, "UPI");
-        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT_DISTANCE, 1.2);
+        // Pass parking lot as object
+        ParkingLot parkingLot = new ParkingLot(
+            456, "String ID Test Lot", 28.7041, 77.1025,
+            "₹40/hr", "₹20/hr",
+            8, 12, 3, 6,
+            "UPI"
+        );
+        parkingLot.setAddress("Test Address 2");
+        parkingLot.setDistance(1.2);
+        
+        intent.putExtra(ParkingLotDetailsActivity.EXTRA_PARKING_LOT, parkingLot);
         
         try (ActivityScenario<ParkingLotDetailsActivity> scenario = ActivityScenario.launch(intent)) {
-            // Verify that the activity launches successfully with String ID
+            // Verify that the activity launches successfully
             onView(withId(R.id.tvParkingLotName)).check(matches(withText("String ID Test Lot")));
             onView(withId(R.id.tvParkingLotAddress)).check(matches(withText("Test Address 2")));
             onView(withId(R.id.btnParkVehicle)).check(matches(isDisplayed()));

@@ -148,14 +148,16 @@ public class ParkingSession implements Serializable {
     }
     
     public double getCurrentCost() {
+        // Use actual amount from backend if available
+        if (totalAmount > 0.0) {
+            return totalAmount;
+        }
+        // Fallback: calculate from start time at default rate
         if (startTime == null) return 0.0;
-        
         long currentTime = System.currentTimeMillis();
         long durationMillis = currentTime - startTime.getTime();
         double hours = durationMillis / (1000.0 * 60 * 60);
-        
-        // Simple calculation - in real implementation, this would use parking lot rates
-        return Math.ceil(hours) * 50.0; // ₹50 per hour
+        return Math.ceil(hours) * 50.0; // fallback rate
     }
     
     private String formatDuration(long durationMillis) {

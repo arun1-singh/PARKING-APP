@@ -1,3 +1,4 @@
+import pytest
 from .common import wait_for_element, fill_registration_form, assert_validation_message
 from .auth_helpers import generate_unique_email, generate_unique_phone, generate_unique_username
 from appium.webdriver.common.appiumby import AppiumBy

@@ -46,6 +46,13 @@ done
 echo "Sleeping 10 seconds before install..."
 sleep 10
 
+# === Dismiss any lingering system dialogs before install ===
+echo "Dismissing any system dialogs..."
+adb shell input keyevent KEYCODE_ENTER 2>/dev/null || true
+sleep 2
+adb shell input keyevent KEYCODE_ENTER 2>/dev/null || true
+sleep 1
+
 echo "Installing app-debug.apk with retries..."
 INSTALL_SUCCESS=0
 for i in $(seq 1 5); do
@@ -63,12 +70,18 @@ if [ $INSTALL_SUCCESS -ne 1 ]; then
   exit 1
 fi
 
-echo "Installing Appium globally..."
-npm install -g appium
-appium driver install uiautomator2
+# Install Appium globally if needed
+if ! command -v appium &> /dev/null; then
+  echo "Installing Appium globally..."
+  npm install -g appium
+fi
+
+# Install uiautomator2 driver (ignore if already installed)
+echo "Installing uiautomator2 driver..."
+appium driver install uiautomator2 2>/dev/null || echo "Driver already installed, continuing..."
 
 echo "Starting Appium server..."
-nohup appium --base-path /wd/hub --log "$APPIUM_LOG_FILE" --log-level debug &
+nohup appium --base-path /wd/hub --log "$APPIUM_LOG_FILE" --log-level info &
 APPIUM_PID=$!
 
 echo "Waiting for Appium to start..."
@@ -86,10 +99,20 @@ if ! nc -z 127.0.0.1 4723; then
   exit 1
 fi
 
+# === Final pre-test: dismiss system dialogs via adb ===
+echo "Pre-test: dismissing any system UI dialogs..."
+adb shell input keyevent KEYCODE_ENTER 2>/dev/null || true
+sleep 1
+adb shell input keyevent KEYCODE_BACK 2>/dev/null || true
+sleep 1
+
+# Activate virtual environment and install Python dependencies
+source ~/parking-app-yolo/venv/bin/activate
+pip install pytest pytest-html appium-python-client --quiet
+
 echo "Running Pytest E2E tests..."
 pytest tests \
   -v \
-  --maxfail=1 \
   --disable-warnings \
   --html="$TEST_REPORT_FILE" \
   --self-contained-html

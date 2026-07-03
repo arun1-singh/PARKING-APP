@@ -1,9 +1,8 @@
-# test_data.py
-
-# Common Registration Data
-REGISTER_NAME = "Meghna9"
-REGISTER_PASSWORD = "password123"
-REGISTER_PHONE = "1234321123"
-REGISTER_ADDRESS = "456Noida"
-REGISTER_EMAIL = "meghna9@gmail.com"
-
+# Re‑export dynamic credentials from auth_helpers
+from .auth_helpers import (
+    REGISTER_NAME,
+    REGISTER_EMAIL,
+    REGISTER_PASSWORD,
+    REGISTER_PHONE,
+    REGISTER_ADDRESS,
+)
