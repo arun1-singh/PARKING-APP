@@ -353,7 +353,7 @@ jobs:
         RPI_API_KEY: test-rpi-key-for-ci
       run: |
         gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 120 \
-          --chdir app wsgi:app > backend.log 2>&1 &
+          app.wsgi:app > backend.log 2>&1 &
         echo $! > backend.pid
         # Wait for backend to be ready
         for i in $(seq 1 30); do
@@ -523,7 +523,7 @@ jobs:
         RPI_API_KEY: test-rpi-key-for-ci
       run: |
         gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 120 \
-          --chdir app wsgi:app > perf.log 2>&1 &
+          app.wsgi:app > perf.log 2>&1 &
         echo $! > app.pid
         # Wait for server to be ready
         for i in $(seq 1 20); do

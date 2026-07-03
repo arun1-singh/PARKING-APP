@@ -74,7 +74,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r app/requirements.txt
-          pip install pytest pytest-html pytest-xdist coverage pytest-cov pytest-benchmark
+          pip install pytest pytest-html coverage pytest-cov pytest-flask
 
       - name: Create test environment file
         working-directory: ${{ env.BACKEND_DIR }}
@@ -131,8 +131,7 @@ jobs:
             --self-contained-html \
             --cov=app \
             --cov-report=html:test-results/coverage \
-            --cov-report=xml:test-results/coverage.xml \
-            -n auto
+            --cov-report=xml:test-results/coverage.xml
 
       - name: Run integration tests
         id: integration-tests

@@ -1,5 +1,5 @@
-from create_app import create_app, db
-from models import User, ParkingLotDetails, Floor, Row, Slot, ParkingSession
+from . import create_app, db
+from .models import User, ParkingLotDetails, Floor, Row, Slot, ParkingSession
 import os
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
