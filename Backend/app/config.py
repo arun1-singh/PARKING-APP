@@ -15,10 +15,8 @@ def setup_logging():
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'a-hard-to-guess-string'
-    
-    # For Docker container, use 'postgres_db' hostname
     SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL', 
+        'DATABASE_URL',
         'postgresql://parking_user:parking_password@postgres_db:5432/parking_db'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -40,13 +38,17 @@ class ProductionConfig(Config):
     DEBUG = False
 
 class TestingConfig(Config):
+    """Testing configuration — uses SQLite in-memory so no DB service is needed."""
     TESTING = True
-    # For tests inside container, also use postgres_db
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'TEST_DATABASE_URL',
-        'postgresql://parking_user:parking_password@postgres_db:5432/parking_test'
-    )
+    DEBUG = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+    }
     WTF_CSRF_ENABLED = False
+    SECRET_KEY = 'test-secret-key'
+    JWT_SECRET_KEY = 'test-secret-key'
 
 config_by_name = {
     'development': DevelopmentConfig,
@@ -54,15 +56,3 @@ config_by_name = {
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
-
-class TestingConfig(Config):
-    """Testing configuration"""
-    TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_pre_ping": True,
-    }
-    JWT_SECRET_KEY = 'my-super-secret-key-that-is-not-safe'
-    SECRET_KEY =  'my-super-secret-key-that-is-not-safe'
-    DEBUG = True

@@ -1,30 +1,13 @@
-# Backend CI workflow using direct Python approach (matching working full-e2e-tests.yml)
-# Runs only when Backend/ changes, runs comprehensive tests, uploads artifacts
 name: Backend CI
 
 on:
   push:
-    paths:
-      - 'Backend/**'
+    paths: [ 'Backend/**' ]
   pull_request:
-    paths:
-      - 'Backend/**'
+    paths: [ 'Backend/**' ]
   schedule:
-    # Run backend tests daily at 1 AM UTC
     - cron: '0 1 * * *'
   workflow_dispatch:
-    inputs:
-      test_type:
-        description: 'Type of tests to run'
-        required: false
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - unit
-          - integration
-          - security
-          - performance
 
 env:
   PYTHON_VERSION: '3.12'
@@ -33,285 +16,54 @@ env:
 jobs:
   backend-ci:
     runs-on: ubuntu-latest
-    
-    services:
-      # Use GitHub's PostgreSQL service for more reliable testing
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_parking_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Cache Python dependencies
+      - name: Cache pip
         uses: actions/cache@v3
         with:
-          path: |
-            ~/.cache/pip
-            ${{ env.BACKEND_DIR }}/.venv
-          key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt', '**/setup.py') }}
-          restore-keys: |
-            ${{ runner.os }}-python-
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('Backend/app/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         working-directory: ${{ env.BACKEND_DIR }}
         run: |
           python -m pip install --upgrade pip
           pip install -r app/requirements.txt
-          pip install pytest pytest-html coverage pytest-cov pytest-flask
+          pip install pytest pytest-html pytest-cov pytest-flask coverage
 
-      - name: Create test environment file
+      - name: Create test-results dir
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: mkdir -p test-results
+
+      - name: Run all tests
+        id: tests
         working-directory: ${{ env.BACKEND_DIR }}
         run: |
-          cat > .env.test << EOF
-          DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_parking_db
-          SECRET_KEY=test-secret-key-for-ci-${{ github.run_id }}
-          JWT_SECRET_KEY=test-jwt-secret-for-ci-${{ github.run_id }}
-          RPI_API_KEY=super-secret-rpi-key
-          FLASK_ENV=testing
-          TESTING=True
-          EOF
-
-      - name: Create necessary directories
-        working-directory: ${{ env.BACKEND_DIR }}
-        run: |
-          mkdir -p test-results
-          mkdir -p htmlcov
-
-      - name: Run database migrations
-        working-directory: ${{ env.BACKEND_DIR }}
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_parking_db
-          SECRET_KEY: test-secret-key-for-ci-${{ github.run_id }}
-          JWT_SECRET_KEY: test-jwt-secret-for-ci-${{ github.run_id }}
-          RPI_API_KEY: super-secret-rpi-key
-        run: |
-          python -c "
-          from app import create_app, db
-          app = create_app('testing')
-          with app.app_context():
-              db.drop_all()
-              db.create_all()
-              print('Database tables created successfully')
-          "
-
-      # Run tests based on input type with proper step IDs
-      - name: Run unit tests
-        id: unit-tests
-        if: ${{ !github.event.inputs.test_type || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'unit' }}
-        working-directory: ${{ env.BACKEND_DIR }}
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_parking_db
-          SECRET_KEY: test-secret-key-for-ci-${{ github.run_id }}
-          JWT_SECRET_KEY: test-jwt-secret-for-ci-${{ github.run_id }}
-          RPI_API_KEY: super-secret-rpi-key
-        run: |
-          python -m pytest \
-            tests/test_auth.py tests/test_parking.py tests/test_admin_api.py tests/test_config.py \
-            -v \
-            --tb=short \
-            --junitxml=test-results/unit-tests.xml \
-            --html=test-results/unit-tests.html \
+          python -m pytest tests/ \
+            -v --tb=short \
+            --junitxml=test-results/results.xml \
+            --html=test-results/results.html \
             --self-contained-html \
             --cov=app \
-            --cov-report=html:test-results/coverage \
             --cov-report=xml:test-results/coverage.xml
 
-      - name: Run integration tests
-        id: integration-tests
-        if: ${{ !github.event.inputs.test_type || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'integration' }}
-        working-directory: ${{ env.BACKEND_DIR }}
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_parking_db
-          SECRET_KEY: test-secret-key-for-ci-${{ github.run_id }}
-          JWT_SECRET_KEY: test-jwt-secret-for-ci-${{ github.run_id }}
-          RPI_API_KEY: super-secret-rpi-key
-        run: |
-          python -m pytest \
-            tests/test_integration.py \
-            -v \
-            --tb=short \
-            --junitxml=test-results/integration-tests.xml \
-            --html=test-results/integration-tests.html \
-            --self-contained-html
-
-      - name: Run security tests
-        id: security-tests
-        if: ${{ !github.event.inputs.test_type || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'security' }}
-        working-directory: ${{ env.BACKEND_DIR }}
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_parking_db
-          SECRET_KEY: test-secret-key-for-ci-${{ github.run_id }}
-          JWT_SECRET_KEY: test-jwt-secret-for-ci-${{ github.run_id }}
-          RPI_API_KEY: super-secret-rpi-key
-        run: |
-          python -m pytest \
-            tests/test_security.py tests/test_security_comprehensive.py \
-            -v \
-            --tb=short \
-            --junitxml=test-results/security-tests.xml \
-            --html=test-results/security-tests.html \
-            --self-contained-html
-
-      - name: Run performance tests
-        id: performance-tests
-        if: ${{ !github.event.inputs.test_type || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'performance' }}
-        working-directory: ${{ env.BACKEND_DIR }}
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_parking_db
-          SECRET_KEY: test-secret-key-for-ci-${{ github.run_id }}
-          JWT_SECRET_KEY: test-jwt-secret-for-ci-${{ github.run_id }}
-          RPI_API_KEY: super-secret-rpi-key
-        run: |
-          python -m pytest \
-            tests/test_performance.py \
-            -v \
-            --tb=short \
-            --junitxml=test-results/performance-tests.xml \
-            --html=test-results/performance-tests.html \
-            --self-contained-html \
-            || echo "Performance tests completed with some failures"
-
-      - name: Run comprehensive tests
-        id: comprehensive-tests
-        if: ${{ !github.event.inputs.test_type || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'integration' }}
-        working-directory: ${{ env.BACKEND_DIR }}
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_parking_db
-          SECRET_KEY: test-secret-key-for-ci-${{ github.run_id }}
-          JWT_SECRET_KEY: test-jwt-secret-for-ci-${{ github.run_id }}
-          RPI_API_KEY: super-secret-rpi-key
-        run: |
-          python -m pytest \
-            tests/test_database_constraints.py tests/test_edge_cases.py tests/test_concurrency.py tests/test_error_recovery.py \
-            -v \
-            --tb=short \
-            --junitxml=test-results/comprehensive-tests.xml \
-            --html=test-results/comprehensive-tests.html \
-            --self-contained-html \
-            || echo "Comprehensive tests completed with some failures"
-
-      # Run all tests with coverage when test_type is 'all' or not specified
-      - name: Run all tests with coverage
-        id: all-tests
-        if: ${{ !github.event.inputs.test_type || github.event.inputs.test_type == 'all' }}
-        working-directory: ${{ env.BACKEND_DIR }}
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_parking_db
-          SECRET_KEY: test-secret-key-for-ci-${{ github.run_id }}
-          JWT_SECRET_KEY: test-jwt-secret-for-ci-${{ github.run_id }}
-          RPI_API_KEY: super-secret-rpi-key
-        run: |
-          python -m pytest \
-            --cov=app \
-            --cov-report=html:test-results/coverage-all \
-            --cov-report=xml:test-results/coverage-all.xml \
-            --junitxml=test-results/all-tests.xml \
-            --html=test-results/all-tests.html \
-            --self-contained-html \
-            -v \
-            | tee test-results/pytest-debug.log
-
-      - name: Run code quality checks
-        working-directory: ${{ env.BACKEND_DIR }}
-        run: |
-          pip install flake8 black isort bandit
-          # Code formatting
-          black --check app/ tests/ --diff || echo "Code formatting issues found"
-          isort --check-only app/ tests/ || echo "Import sorting issues found"
-          # Linting
-          flake8 app/ tests/ --max-line-length=120 --ignore=E203,W503,E501 || echo "Linting issues found"
-          # Security linting
-          bandit -r app/ -f html -o test-results/bandit-report.html || echo "Security issues found"
-
-      # Upload coverage report artifact
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: backend-coverage-report
-          path: |
-            ${{ env.BACKEND_DIR }}/test-results/coverage/
-            ${{ env.BACKEND_DIR }}/test-results/coverage-all/
-            ${{ env.BACKEND_DIR }}/test-results/coverage.xml
-            ${{ env.BACKEND_DIR }}/test-results/coverage-all.xml
-          retention-days: 30
-
-      # Upload test reports
-      - name: Upload test reports
+      - name: Upload results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-test-reports
-          path: |
-            ${{ env.BACKEND_DIR }}/test-results/
+          path: ${{ env.BACKEND_DIR }}/test-results/
           retention-days: 30
 
-      # Upload coverage to Codecov
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        if: always()
-        with:
-          file: ${{ env.BACKEND_DIR }}/test-results/coverage.xml
-          flags: backend-ci
-          name: backend-ci-coverage
-          fail_ci_if_error: false
-
-      # Generate test summary
-      - name: Generate test summary
+      - name: Summary
         if: always()
         run: |
-          echo "# Backend CI Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Test Execution Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Get test results
-          UNIT_STATUS="${{ steps.unit-tests.outcome || 'skipped' }}"
-          INTEGRATION_STATUS="${{ steps.integration-tests.outcome || 'skipped' }}"
-          SECURITY_STATUS="${{ steps.security-tests.outcome || 'skipped' }}"
-          PERFORMANCE_STATUS="${{ steps.performance-tests.outcome || 'skipped' }}"
-          COMPREHENSIVE_STATUS="${{ steps.comprehensive-tests.outcome || 'skipped' }}"
-          ALL_STATUS="${{ steps.all-tests.outcome || 'skipped' }}"
-          
-          echo "| Test Type | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.event.inputs.test_type }}" == "all" ] || [ "${{ github.event.inputs.test_type }}" == "" ]; then
-            echo "| All Tests | $ALL_STATUS |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Unit Tests | $UNIT_STATUS |" >> $GITHUB_STEP_SUMMARY
-            echo "| Integration Tests | $INTEGRATION_STATUS |" >> $GITHUB_STEP_SUMMARY
-            echo "| Security Tests | $SECURITY_STATUS |" >> $GITHUB_STEP_SUMMARY
-            echo "| Performance Tests | $PERFORMANCE_STATUS |" >> $GITHUB_STEP_SUMMARY
-            echo "| Comprehensive Tests | $COMPREHENSIVE_STATUS |" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          echo "## 📊 Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Coverage Reports**: Available in 'backend-coverage-report' artifact" >> $GITHUB_STEP_SUMMARY
-          echo "- **Test Reports**: Available in 'backend-test-reports' artifact" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          echo "## 🧪 Test Environment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Python Version**: ${{ env.PYTHON_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Database**: PostgreSQL 15" >> $GITHUB_STEP_SUMMARY
-          echo "- **Test Type**: ${{ github.event.inputs.test_type || 'all' }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Backend CI" >> $GITHUB_STEP_SUMMARY
+          echo "Tests: **${{ steps.tests.outcome }}**" >> $GITHUB_STEP_SUMMARY
