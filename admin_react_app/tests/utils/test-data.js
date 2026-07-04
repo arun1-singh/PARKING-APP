@@ -1,4 +1,4 @@
-import users from '../fixtures/users.json' assert { type: 'json' };
+import users from '../fixtures/users.json' with { type: 'json' };
 
 export const apiEndpoints = {
   login: '/auth/login',

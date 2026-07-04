@@ -22,6 +22,11 @@ done
 # Brief stabilization
 sleep 5
 
+echo ">>> Disabling animations (best-effort, errors suppressed)..."
+adb shell settings put global window_animation_scale 0.0    2>/dev/null || true
+adb shell settings put global transition_animation_scale 0.0 2>/dev/null || true
+adb shell settings put global animator_duration_scale 0.0   2>/dev/null || true
+
 echo ">>> Installing APK..."
 INSTALLED=0
 ATTEMPT=0

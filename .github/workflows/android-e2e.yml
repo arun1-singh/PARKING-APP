@@ -166,9 +166,7 @@ jobs:
             -no-snapshot -wipe-data
             -gpu swiftshader_indirect
             -camera-back none -camera-front none
-          disable-animations: true
-          pre-emulator-launch-script: |
-            echo "Pre-launch: waiting for KVM availability..."
+          disable-animations: false
           script: bash Vision-Parking/ci_emulator_setup.sh
 
       - name: Upload E2E report
